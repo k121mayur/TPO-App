@@ -1,12 +1,13 @@
 from typing import List
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..database import get_session
 from ..models import Company, Job, RedirectStat, User
 from ..routers.deps import get_admin_user
+from ..schemas.company import CompanyRead
 from ..schemas.stats import AdminStats, RedirectStat as RedirectStatSchema
 
 router = APIRouter()
@@ -22,6 +23,9 @@ async def read_admin_stats(
     total_users = await session.scalar(select(func.count()).select_from(User))
     stats_result = await session.execute(select(RedirectStat))
     redirects = stats_result.scalars().all()
+    pending_stmt = select(Company).where(Company.is_verified.is_(False))
+    pending_result = await session.execute(pending_stmt)
+    pending_companies = pending_result.scalars().all()
     redirect_payloads: List[RedirectStatSchema] = [
         RedirectStatSchema(jobId=stat.job_id, jobTitle=stat.job_title, clicks=stat.clicks)
         for stat in redirects
@@ -31,4 +35,19 @@ async def read_admin_stats(
         totalCompanies=total_companies or 0,
         totalUsers=total_users or 0,
         redirects=redirect_payloads,
+        pendingCompanies=[CompanyRead.from_orm(company) for company in pending_companies],
     )
+
+
+@router.post("/admin/companies/{company_id}/verify", response_model=CompanyRead)
+async def verify_company(company_id: str, session: AsyncSession = Depends(get_session), _=Depends(get_admin_user)):
+    stmt = select(Company).where(Company.id == company_id)
+    result = await session.execute(stmt)
+    company = result.scalars().first()
+    if not company:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Company not found")
+    company.is_verified = True
+    session.add(company)
+    await session.commit()
+    await session.refresh(company)
+    return CompanyRead.from_orm(company)

@@ -89,6 +89,7 @@ export interface RegisterData extends LoginData {
   name: string;
   role: UserRole;
   companyId?: string;
+  company?: CompanyCreatePayload;
 }
 
 export interface AuthResponse {
@@ -115,4 +116,11 @@ export interface AdminStats {
   totalCompanies: number;
   totalUsers: number;
   redirects: RedirectStat[];
+  pendingCompanies: Company[];
+}
+
+export interface CompanyCreatePayload {
+  name: string;
+  description: string;
+  website?: string;
 }

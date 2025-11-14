@@ -1,7 +1,13 @@
 
 import React, { createContext, useState, useEffect, ReactNode } from 'react';
-import { LoginData, RegisterData, User } from '../types';
-import { getCurrentUser, login as loginRequest, register as registerRequest, setAccessToken } from '../services/api';
+import { LoginData, RegisterData, User, UserRole } from '../types';
+import {
+  getCurrentUser,
+  login as loginRequest,
+  register as registerRequest,
+  setAccessToken,
+  socialLogin,
+} from '../services/api';
 
 interface AuthContextType {
   user: User | null;
@@ -9,6 +15,7 @@ interface AuthContextType {
   loading: boolean;
   login: (payload: LoginData) => Promise<User>;
   register: (payload: RegisterData) => Promise<User>;
+  loginWithGoogle: (role: UserRole) => Promise<User>;
   logout: () => void;
   refreshUser: () => Promise<void>;
 }
@@ -81,6 +88,17 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   };
 
+  const loginWithGoogle = async (role: UserRole) => {
+    setLoading(true);
+    try {
+      const response = await socialLogin(role);
+      persistSession(response.access_token, response.user);
+      return response.user;
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const logout = () => {
     setUser(null);
     setToken(null);
@@ -89,7 +107,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   };
 
   return (
-    <AuthContext.Provider value={{ user, token, loading, login, register, logout, refreshUser }}>
+    <AuthContext.Provider value={{ user, token, loading, login, register, loginWithGoogle, logout, refreshUser }}>
       {children}
     </AuthContext.Provider>
   );

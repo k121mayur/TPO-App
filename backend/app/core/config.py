@@ -13,6 +13,9 @@ class Settings(BaseSettings):
     JWT_ALGORITHM: str = Field(default="HS256", env="JWT_ALGORITHM")
     ACCESS_TOKEN_EXPIRE_MINUTES: int = Field(default=60, env="ACCESS_TOKEN_EXPIRE_MINUTES")
     CORS_ORIGINS: list[str] = Field(default_factory=lambda: ["http://localhost:5173"])
+    ADMIN_NAME: str = Field(default="Platform Admin", env="ADMIN_NAME")
+    ADMIN_EMAIL: str = Field(default="admin@greenjobs.example.com", env="ADMIN_EMAIL")
+    ADMIN_PASSWORD: str = Field(default="password123", env="ADMIN_PASSWORD")
 
     class Config:
         env_file = str(Path(__file__).resolve().parents[2] / ".env")

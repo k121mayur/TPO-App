@@ -3,6 +3,7 @@ from typing import Any, Optional
 from pydantic import BaseModel, EmailStr, Field
 
 from ..models import UserRoleEnum
+from .company import CompanyCreate
 
 
 class UserCreate(BaseModel):
@@ -10,7 +11,8 @@ class UserCreate(BaseModel):
     email: EmailStr
     password: str
     role: UserRoleEnum
-    company_id: Optional[str] = None
+    company_id: Optional[str] = Field(default=None, alias="company_id")
+    company: Optional[CompanyCreate] = None
 
 
 class LoginRequest(BaseModel):
@@ -43,3 +45,7 @@ class AuthResponse(BaseModel):
     access_token: str
     token_type: str = "bearer"
     user: UserRead
+
+
+class SocialLoginRequest(BaseModel):
+    role: UserRoleEnum = Field(default=UserRoleEnum.EMPLOYEE)

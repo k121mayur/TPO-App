@@ -1,4 +1,15 @@
-import { AdminStats, AuthResponse, Company, EmployeeProfile, Job, JobFilters, LoginData, RegisterData, User } from '../types';
+import {
+  AdminStats,
+  AuthResponse,
+  Company,
+  EmployeeProfile,
+  Job,
+  JobFilters,
+  LoginData,
+  RegisterData,
+  User,
+  UserRole,
+} from '../types';
 
 const BASE_URL = (import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api').replace(/\/$/, '');
 
@@ -66,12 +77,20 @@ export const login = (payload: LoginData): Promise<AuthResponse> => {
   return request<AuthResponse>({ path: '/auth/login', method: 'POST', body: payload });
 };
 
+export const socialLogin = (role: UserRole = UserRole.EMPLOYEE): Promise<AuthResponse> => {
+  return request<AuthResponse>({ path: '/auth/google', method: 'POST', body: { role } });
+};
+
 export const register = (payload: RegisterData): Promise<AuthResponse> => {
-  const { companyId, ...rest } = payload;
+  const { companyId, company, ...rest } = payload;
+  const body: Record<string, unknown> = { ...rest, company_id: companyId };
+  if (company) {
+    body.company = company;
+  }
   return request<AuthResponse>({
     path: '/auth/register',
     method: 'POST',
-    body: { ...rest, company_id: companyId },
+    body,
   });
 };
 
@@ -109,4 +128,8 @@ export const getAdminStats = (): Promise<AdminStats> => {
 
 export const updateProfile = (payload: Partial<EmployeeProfile>) => {
   return request<User>({ path: '/auth/profile', method: 'PUT', body: payload });
+};
+
+export const verifyCompany = (companyId: string): Promise<Company> => {
+  return request<Company>({ path: `/admin/companies/${companyId}/verify`, method: 'POST' });
 };

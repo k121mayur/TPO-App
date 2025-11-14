@@ -1,6 +1,7 @@
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from ..core.config import settings
 from ..core.security import get_password_hash
 from ..database import AsyncSessionLocal, Base, engine
 from ..models import (
@@ -218,5 +219,16 @@ async def seed_default_data():
             clicks=42,
         )
         session.add(redirect_stat)
+
+        # Ensure admin user from environment variables
+        admin_user_query = await session.execute(select(User).where(User.email == settings.ADMIN_EMAIL))
+        if not admin_user_query.scalars().first():
+            admin = User(
+                name=settings.ADMIN_NAME,
+                email=settings.ADMIN_EMAIL,
+                hashed_password=get_password_hash(settings.ADMIN_PASSWORD),
+                role=UserRoleEnum.ADMIN,
+            )
+            session.add(admin)
 
         await session.commit()

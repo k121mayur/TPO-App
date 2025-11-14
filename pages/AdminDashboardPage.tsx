@@ -1,29 +1,35 @@
 
-import React, { useState, useEffect } from 'react';
-import { getAdminStats } from '../services/api';
+import React, { useState, useEffect, useCallback } from 'react';
+import { getAdminStats, verifyCompany } from '../services/api';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
-import { Briefcase, Building, Users, ExternalLink } from 'lucide-react';
+import { Briefcase, Building, Users, ExternalLink, ShieldCheck } from 'lucide-react';
 import Card from '../components/common/Card';
 
-interface AdminStats {
-  totalJobs: number;
-  totalCompanies: number;
-  totalUsers: number;
-  redirects: { jobId: string, jobTitle: string, clicks: number }[];
-}
-
 const AdminDashboardPage: React.FC = () => {
-  const [stats, setStats] = useState<AdminStats | null>(null);
+  const [stats, setStats] = useState<Awaited<ReturnType<typeof getAdminStats>> | null>(null);
   const [loading, setLoading] = useState(true);
+  const [verifying, setVerifying] = useState<string | null>(null);
+
+  const fetchStats = useCallback(async () => {
+    setLoading(true);
+    const data = await getAdminStats();
+    setStats(data);
+    setLoading(false);
+  }, []);
 
   useEffect(() => {
-    const fetchStats = async () => {
-      const data = await getAdminStats();
-      setStats(data);
-      setLoading(false);
-    };
-    fetchStats();
-  }, []);
+    void fetchStats();
+  }, [fetchStats]);
+
+  const handleVerifyCompany = async (companyId: string) => {
+    setVerifying(companyId);
+    try {
+      await verifyCompany(companyId);
+      await fetchStats();
+    } finally {
+      setVerifying(null);
+    }
+  };
 
   if (loading || !stats) {
     return <div className="flex justify-center items-center h-screen"><div className="animate-spin rounded-full h-32 w-32 border-t-2 border-b-2 border-brand-green"></div></div>;
@@ -76,7 +82,7 @@ const AdminDashboardPage: React.FC = () => {
                     </BarChart>
                 </ResponsiveContainer>
             </div>
-             <div className="lg:col-span-2 bg-white p-6 rounded-2xl shadow-lg">
+            <div className="lg:col-span-2 bg-white p-6 rounded-2xl shadow-lg">
                 <h2 className="text-xl font-semibold text-gray-700 mb-4">Manage Third-Party Jobs</h2>
                 <button className="w-full bg-brand-green text-white py-2 px-4 rounded-md hover:bg-brand-green-light transition duration-300 shadow-sm flex items-center justify-center gap-2">
                     <ExternalLink size={18} /> Add New Redirect Job
@@ -90,6 +96,38 @@ const AdminDashboardPage: React.FC = () => {
                     ))}
                  </div>
             </div>
+        </div>
+        <div className="mt-10 bg-white p-6 rounded-2xl shadow-lg">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h2 className="text-xl font-semibold text-gray-700">Pending Company Verifications</h2>
+              <p className="text-sm text-gray-500">
+                Employers can only post jobs once their organization is verified.
+              </p>
+            </div>
+          </div>
+          {stats?.pendingCompanies.length ? (
+            <div className="space-y-4">
+              {stats.pendingCompanies.map((company) => (
+                <div key={company.id} className="flex flex-col md:flex-row md:items-center justify-between gap-3 p-4 border border-dashed rounded-lg">
+                  <div>
+                    <p className="font-semibold text-gray-800">{company.name}</p>
+                    <p className="text-sm text-gray-500">{company.website}</p>
+                  </div>
+                  <button
+                    onClick={() => handleVerifyCompany(company.id)}
+                    disabled={verifying === company.id}
+                    className="inline-flex items-center gap-2 px-4 py-2 border border-brand-green text-brand-green rounded-lg text-sm font-medium hover:bg-brand-green-light hover:text-white transition"
+                  >
+                    <ShieldCheck size={16} />
+                    {verifying === company.id ? 'Verifying…' : 'Verify'}
+                  </button>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-sm text-gray-500">No companies are awaiting verification.</p>
+          )}
         </div>
       </div>
     </div>
