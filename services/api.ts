@@ -11,7 +11,9 @@ import {
   UserRole,
 } from '../types';
 
-const BASE_URL = (import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api').replace(/\/$/, '');
+const inferredHostname = typeof window !== 'undefined' ? window.location.hostname : 'backend';
+const defaultHost = inferredHostname === 'backend' ? 'http://backend:8000/api' : 'http://localhost:8000/api';
+const BASE_URL = (import.meta.env.VITE_API_BASE_URL || defaultHost).replace(/\/$/, '');
 
 let accessToken: string | null = null;
 
