@@ -26,6 +26,8 @@ export interface User {
   email: string;
   role: UserRole;
   profilePicture?: string;
+  profile?: EmployeeProfile;
+  companyId?: string;
 }
 
 export interface EmployeeProfile {
@@ -76,4 +78,41 @@ export interface Job {
   qualifications: string[];
   isThirdParty?: boolean;
   redirectUrl?: string;
+}
+
+export interface LoginData {
+  email: string;
+  password: string;
+}
+
+export interface RegisterData extends LoginData {
+  name: string;
+  role: UserRole;
+  companyId?: string;
+}
+
+export interface AuthResponse {
+  access_token: string;
+  token_type: string;
+  user: User;
+}
+
+export interface JobFilters {
+  title?: string;
+  location?: string;
+  sector?: JobSector;
+  workType?: WorkType;
+}
+
+export interface RedirectStat {
+  jobId: string;
+  jobTitle: string;
+  clicks: number;
+}
+
+export interface AdminStats {
+  totalJobs: number;
+  totalCompanies: number;
+  totalUsers: number;
+  redirects: RedirectStat[];
 }

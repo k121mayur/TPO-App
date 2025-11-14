@@ -26,10 +26,10 @@ const JobDetailPage: React.FC = () => {
 
   const handleApplyClick = () => {
     if (job?.isThirdParty && job.redirectUrl) {
-      trackRedirect(job.id);
+      void trackRedirect(job.id);
       window.open(job.redirectUrl, '_blank');
     } else {
-        alert("Thank you for your application! (This is a mock application process)");
+      alert('Thank you for your interest! The hiring team will be in touch shortly.');
     }
   };
 

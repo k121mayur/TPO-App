@@ -1,64 +1,112 @@
+import { AdminStats, AuthResponse, Company, EmployeeProfile, Job, JobFilters, LoginData, RegisterData, User } from '../types';
 
-import { mockJobs, mockCompanies, mockUsers, mockAdminStats } from './mockData';
-import { Job, User, UserRole, Company } from '../types';
+const BASE_URL = (import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api').replace(/\/$/, '');
 
-const delay = (ms: number) => new Promise(res => setTimeout(res, ms));
+let accessToken: string | null = null;
 
-export const getJobs = async (filters: any): Promise<Job[]> => {
-  await delay(500);
-  console.log("Filtering with:", filters);
-  // Basic filtering simulation
-  return mockJobs.filter(job => {
-    const titleMatch = filters.title ? job.title.toLowerCase().includes(filters.title.toLowerCase()) : true;
-    const locationMatch = filters.location ? job.location.toLowerCase().includes(filters.location.toLowerCase()) : true;
-    const sectorMatch = filters.sector ? job.sector === filters.sector : true;
-    const workTypeMatch = filters.workType ? job.workType === filters.workType : true;
-    return titleMatch && locationMatch && sectorMatch && workTypeMatch;
+interface RequestOptions {
+  method?: string;
+  params?: Record<string, string | number | boolean | undefined>;
+  body?: unknown;
+  path: string;
+}
+
+const buildUrl = (path: string, params?: RequestOptions['params']) => {
+  const normalizedPath = path.startsWith('/') ? path : `/${path}`;
+  const url = new URL(`${BASE_URL}${normalizedPath}`);
+  if (params) {
+    Object.entries(params).forEach(([key, value]) => {
+      if (value !== undefined && value !== null && value !== '') {
+        url.searchParams.set(key, String(value));
+      }
+    });
+  }
+  return url.toString();
+};
+
+const getHeaders = () => {
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+  };
+  if (accessToken) {
+    headers.Authorization = `Bearer ${accessToken}`;
+  }
+  return headers;
+};
+
+const request = async <T>({ path, method = 'GET', params, body }: RequestOptions): Promise<T> => {
+  const url = buildUrl(path, params);
+  const response = await fetch(url, {
+    method,
+    headers: getHeaders(),
+    body: body ? JSON.stringify(body) : undefined,
+  });
+  if (response.status === 204) {
+    return undefined as unknown as T;
+  }
+  let payload: unknown = null;
+  try {
+    payload = await response.json();
+  } catch {
+    payload = null;
+  }
+  if (!response.ok) {
+    const message =
+      (payload as any)?.detail || (payload as any)?.message || response.statusText || 'Something went wrong';
+    throw new Error(message);
+  }
+  return payload as T;
+};
+
+export const setAccessToken = (token: string | null) => {
+  accessToken = token ?? null;
+};
+
+export const login = (payload: LoginData): Promise<AuthResponse> => {
+  return request<AuthResponse>({ path: '/auth/login', method: 'POST', body: payload });
+};
+
+export const register = (payload: RegisterData): Promise<AuthResponse> => {
+  const { companyId, ...rest } = payload;
+  return request<AuthResponse>({
+    path: '/auth/register',
+    method: 'POST',
+    body: { ...rest, company_id: companyId },
   });
 };
 
-export const getJobById = async (id: string): Promise<Job | undefined> => {
-    await delay(300);
-    return mockJobs.find(job => job.id === id);
-}
+export const getCurrentUser = (): Promise<User> => {
+  return request<User>({ path: '/auth/me' });
+};
 
-export const getFeaturedJobs = async (): Promise<Job[]> => {
-    await delay(300);
-    return mockJobs.slice(0, 4);
-}
+export const getJobs = (filters: JobFilters): Promise<Job[]> => {
+  return request<Job[]>({ path: '/jobs', params: filters });
+};
 
-export const getMockUser = (role: UserRole): User => {
-    return mockUsers[role];
-}
+export const getFeaturedJobs = (): Promise<Job[]> => {
+  return request<Job[]>({ path: '/jobs/featured' });
+};
 
-export const getCompanyById = async (id: string): Promise<Company | undefined> => {
-    await delay(200);
-    return mockCompanies.find(c => c.id === id);
-}
+export const getJobById = (id: string): Promise<Job> => {
+  return request<Job>({ path: `/jobs/${id}` });
+};
 
-export const getEmployerJobs = async (employerId: string): Promise<Job[]> => {
-    await delay(500);
-    const employerCompanyId = mockUsers.employer.companyId;
-    return mockJobs.filter(job => job.company.id === employerCompanyId);
-}
+export const trackRedirect = (jobId: string): Promise<void> => {
+  return request({ path: `/jobs/${jobId}/track-redirect`, method: 'POST' });
+};
 
-export const getAdminStats = async () => {
-    await delay(600);
-    return mockAdminStats;
-}
+export const getCompanyById = (id: string): Promise<Company> => {
+  return request<Company>({ path: `/companies/${id}` });
+};
 
-export const trackRedirect = async (jobId: string) => {
-    await delay(100);
-    console.log(`Redirect tracked for job ${jobId}`);
-    // In a real app, this would be an API call to the backend.
-    const stat = mockAdminStats.redirects.find(r => r.jobId === jobId);
-    if(stat){
-        stat.clicks += 1;
-    } else {
-        const job = mockJobs.find(j => j.id === jobId);
-        if(job) {
-             mockAdminStats.redirects.push({ jobId: job.id, jobTitle: job.title, clicks: 1});
-        }
-    }
-    return Promise.resolve();
-}
+export const getEmployerJobs = (): Promise<Job[]> => {
+  return request<Job[]>({ path: '/employer/jobs' });
+};
+
+export const getAdminStats = (): Promise<AdminStats> => {
+  return request<AdminStats>({ path: '/admin/stats' });
+};
+
+export const updateProfile = (payload: Partial<EmployeeProfile>) => {
+  return request<User>({ path: '/auth/profile', method: 'PUT', body: payload });
+};
